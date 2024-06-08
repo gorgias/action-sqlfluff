@@ -132,9 +132,9 @@ inputs:
     default: ""
   dbt_version:
     description: |
-      dbt version. Use the latest version if not set.
+      dbt version. Use the 1.6.13 version if not set.
     required: false
-    default: "1.8.0"
+    default: "1.6.13"
 
 outputs:
   sqlfluff-results:

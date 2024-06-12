@@ -64,7 +64,6 @@ if [[ "${SQLFLUFF_COMMAND:?}" == "lint" ]]; then
   # Allow failures now, as reviewdog handles them
   set +Eeuo pipefail
   lint_results="sqlfluff-lint.json"
-  lint_results_rdjson="sqlfluff-lint.rdjson"
   # shellcheck disable=SC2086,SC2046
   sqlfluff lint \
     --format json \
@@ -76,10 +75,13 @@ if [[ "${SQLFLUFF_COMMAND:?}" == "lint" ]]; then
     $(if [[ "x${SQLFLUFF_TEMPLATER}" != "x" ]]; then echo "--templater ${SQLFLUFF_TEMPLATER}"; fi) \
     $(if [[ "x${SQLFLUFF_DISABLE_NOQA}" != "x" ]]; then echo "--disable-noqa ${SQLFLUFF_DISABLE_NOQA}"; fi) \
     $(if [[ "x${SQLFLUFF_DIALECT}" != "x" ]]; then echo "--dialect ${SQLFLUFF_DIALECT}"; fi) \
-    $changed_files | tail -n +2 | jq -r -f "${SCRIPT_DIR}/to-rdjson.jq" | tee > "$lint_results_rdjson"
+    $changed_files | tail -n +2 >> "$lint_results"
 
   sqlfluff_exit_code=$?
-  cat "$lint_results_rdjson"
+  cat "$lint_results"
+
+  echo "name=sqlfluff-results::$(cat <"$lint_results" | jq -r -c '.')" >> $GITHUB_OUTPUT # Convert to a single line
+  echo "name=sqlfluff-exit-code::${sqlfluff_exit_code}" >> $GITHUB_OUTPUT
 
   set -Eeuo pipefail
   echo '::endgroup::'
@@ -87,6 +89,11 @@ if [[ "${SQLFLUFF_COMMAND:?}" == "lint" ]]; then
   echo '::group:: Running reviewdog 🐶 ...'
   # Allow failures now, as reviewdog handles them
   set +Eeuo pipefail
+
+  lint_results_rdjson="sqlfluff-lint.rdjson"
+  cat <"$lint_results" |
+    jq -r -f "${SCRIPT_DIR}/to-rdjson.jq" |
+    tee >"$lint_results_rdjson"
 
   cat <"$lint_results_rdjson" |
     reviewdog -f=rdjson \
